@@ -1,0 +1,24 @@
+{
+  "name": "@ross-tax-pro/design-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ross Tax Pro Software Co. branded CSS, design tokens, Tailwind preset, and reusable UI primitives.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles": "./styles/index.css",
+    "./tokens": "./styles/tokens.css",
+    "./tailwind": "./tailwind.preset.cjs",
+    "./brand": "./brand/brand.json"
+  },
+  "scripts": {
+    "lint:css": "stylelint \"styles/**/*.css\"",
+    "check": "npm run lint:css"
+  },
+  "devDependencies": {
+    "stylelint": "^16.8.0",
+    "stylelint-config-standard": "^36.0.0",
+    "tailwindcss": "^3.4.10"
+  }
+}
