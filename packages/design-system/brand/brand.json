@@ -1,0 +1,35 @@
+{
+  "organization": "Ross Tax Pro Software Co.",
+  "dba": "254-TAX CONSULTANTS",
+  "product": "WORKSPACEIRS",
+  "website": "https://www.rosstaxsoftware.com",
+  "contact": "ceo@rosstaxsoftware.com",
+  "copyright": "© 2026 Ross Tax Pro Software Co. All rights reserved.",
+  "slogans": [
+    "Smarter Software. Stronger Results.",
+    "Gain a friend, not just a preparer.",
+    "Secure tax operations. Clearer financial outcomes.",
+    "From authorization to acknowledgment—controlled, documented, accountable."
+  ],
+  "colors": {
+    "navy950": "#03101F",
+    "navy900": "#071A33",
+    "navy800": "#0B294D",
+    "navy700": "#123D6A",
+    "gold600": "#A98214",
+    "gold500": "#C9A227",
+    "gold400": "#E0BE4F",
+    "white": "#FFFFFF",
+    "mist": "#F4F7FA",
+    "slate": "#52606D",
+    "success": "#137A52",
+    "warning": "#A35B00",
+    "danger": "#B42318",
+    "info": "#175CD3"
+  },
+  "typography": {
+    "display": "Inter, ui-sans-serif, system-ui, sans-serif",
+    "body": "Inter, ui-sans-serif, system-ui, sans-serif",
+    "mono": "JetBrains Mono, ui-monospace, SFMono-Regular, monospace"
+  }
+}
