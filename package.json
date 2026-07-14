@@ -1,0 +1,13 @@
+{
+  "name": "workspaceirs",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @ross/web dev",
+    "build": "pnpm --filter @ross/web build",
+    "start": "pnpm --filter @ross/web start",
+    "lint": "pnpm --filter @ross/web lint",
+    "typecheck": "pnpm --filter @ross/web typecheck"
+  }
+}
