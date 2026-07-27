@@ -1,7 +1,7 @@
 import {apiError,apiResponse,authorizeOperationalRequest,readJson,requestContext,validateTenantScope} from '../../../../../lib/api';
 import {TASK_STATES,transitionWorkflow,type RiskTier,type TaskState} from '../../../../../lib/operations';
 
-const roles=['OWNER_SUPER_ADMIN','PLATFORM_ADMIN','FIRM_ADMIN','ERO_ADMIN','PREPARER','REVIEWER','COMPLIANCE','CLIENT_SERVICE','CLIENT'];
+const roles=['OWNER_SUPER_ADMIN','PLATFORM_ADMIN','FIRM_ADMIN','ERO_ADMIN','PREPARER','REVIEWER','COMPLIANCE','CLIENT_SERVICE'];
 
 export async function POST(request:Request){
  const context=requestContext(request);const auth=authorizeOperationalRequest(request,{allowSynthetic:true,roles});
