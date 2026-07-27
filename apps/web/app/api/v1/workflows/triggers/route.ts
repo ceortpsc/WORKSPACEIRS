@@ -2,7 +2,7 @@ import {apiError,apiResponse,authorizeOperationalRequest,readJson,requestContext
 import {evaluateTrigger,type TriggerEvent} from '../../../../../lib/operations';
 
 const events=['INTAKE_SUBMITTED','DOCUMENT_UPLOADED','SIGNATURE_COMPLETED','EFILE_ACK_RECEIVED','NOTICE_UPLOADED','REFUND_EVIDENCE_ADDED','SECURITY_ANOMALY','PAYMENT_CONFIRMED'] as const;
-const roles=['OWNER_SUPER_ADMIN','PLATFORM_ADMIN','FIRM_ADMIN','ERO_ADMIN','PREPARER','REVIEWER','COMPLIANCE','CLIENT_SERVICE','CLIENT'];
+const roles=['OWNER_SUPER_ADMIN','PLATFORM_ADMIN','FIRM_ADMIN','ERO_ADMIN','PREPARER','REVIEWER','COMPLIANCE','CLIENT_SERVICE'];
 
 export async function POST(request:Request){
  const context=requestContext(request);const auth=authorizeOperationalRequest(request,{allowSynthetic:true,roles});
