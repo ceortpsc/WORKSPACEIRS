@@ -1,0 +1,106 @@
+name: Production Certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      production_base_url:
+        description: Canonical HTTPS production URL to validate
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  DEPLOYMENT_STAGE: production
+  APP_VERSION: 1.0.0
+  BUILD_COMMIT: ${{ github.sha }}
+  NEXT_PUBLIC_SITE_URL: ${{ inputs.production_base_url }}
+  SYNTHETIC_WORKBENCH_ENABLED: "false"
+  IDENTITY_ENABLED: ${{ vars.IDENTITY_ENABLED }}
+  IDENTITY_CONFIGURED: ${{ vars.IDENTITY_CONFIGURED }}
+  TENANT_ISOLATION_ENABLED: ${{ vars.TENANT_ISOLATION_ENABLED }}
+  TENANT_ISOLATION_CONFIGURED: ${{ vars.TENANT_ISOLATION_CONFIGURED }}
+  DATABASE_ENABLED: ${{ vars.DATABASE_ENABLED }}
+  DATABASE_CONFIGURED: ${{ vars.DATABASE_CONFIGURED }}
+  DOCUMENT_VAULT_ENABLED: ${{ vars.DOCUMENT_VAULT_ENABLED }}
+  DOCUMENT_VAULT_CONFIGURED: ${{ vars.DOCUMENT_VAULT_CONFIGURED }}
+  AUDIT_ENABLED: ${{ vars.AUDIT_ENABLED }}
+  AUDIT_CONFIGURED: ${{ vars.AUDIT_CONFIGURED }}
+  EVENTS_ENABLED: ${{ vars.EVENTS_ENABLED }}
+  EVENTS_CONFIGURED: ${{ vars.EVENTS_CONFIGURED }}
+  MIGRATIONS_VERIFIED: ${{ vars.MIGRATIONS_VERIFIED }}
+  BACKUP_RESTORE_VERIFIED: ${{ vars.BACKUP_RESTORE_VERIFIED }}
+  ACCESS_CONTROL_TESTS_VERIFIED: ${{ vars.ACCESS_CONTROL_TESTS_VERIFIED }}
+  SECURITY_SCAN_VERIFIED: ${{ vars.SECURITY_SCAN_VERIFIED }}
+  SMOKE_TESTS_VERIFIED: ${{ vars.SMOKE_TESTS_VERIFIED }}
+  INCIDENT_RUNBOOK_VERIFIED: ${{ vars.INCIDENT_RUNBOOK_VERIFIED }}
+  RETENTION_POLICY_VERIFIED: ${{ vars.RETENTION_POLICY_VERIFIED }}
+  ROLLBACK_VERIFIED: ${{ vars.ROLLBACK_VERIFIED }}
+  IRS_GATEWAY_ENABLED: ${{ vars.IRS_GATEWAY_ENABLED }}
+  IRS_GATEWAY_CONFIGURED: ${{ vars.IRS_GATEWAY_CONFIGURED }}
+  IRS_TDS_ENABLED: ${{ vars.IRS_TDS_ENABLED }}
+  IRS_TDS_CONFIGURED: ${{ vars.IRS_TDS_CONFIGURED }}
+  IRS_SOR_ENABLED: ${{ vars.IRS_SOR_ENABLED }}
+  IRS_SOR_CONFIGURED: ${{ vars.IRS_SOR_CONFIGURED }}
+  IRS_TIN_MATCHING_ENABLED: ${{ vars.IRS_TIN_MATCHING_ENABLED }}
+  IRS_TIN_MATCHING_CONFIGURED: ${{ vars.IRS_TIN_MATCHING_CONFIGURED }}
+  IRS_IRIS_ENABLED: ${{ vars.IRS_IRIS_ENABLED }}
+  IRS_IRIS_CONFIGURED: ${{ vars.IRS_IRIS_CONFIGURED }}
+  PAYROLL_ENGINE_ENABLED: ${{ vars.PAYROLL_ENGINE_ENABLED }}
+  PAYROLL_ENGINE_CONFIGURED: ${{ vars.PAYROLL_ENGINE_CONFIGURED }}
+  PAYMENTS_ENABLED: ${{ vars.PAYMENTS_ENABLED }}
+  PAYMENTS_CONFIGURED: ${{ vars.PAYMENTS_CONFIGURED }}
+  NOTIFICATIONS_ENABLED: ${{ vars.NOTIFICATIONS_ENABLED }}
+  NOTIFICATIONS_CONFIGURED: ${{ vars.NOTIFICATIONS_CONFIGURED }}
+  APPLE_RELEASE_ENABLED: ${{ vars.APPLE_RELEASE_ENABLED }}
+  APPLE_RELEASE_CONFIGURED: ${{ vars.APPLE_RELEASE_CONFIGURED }}
+  IRS_ADAPTER_MODE: ${{ vars.IRS_ADAPTER_MODE }}
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  DOCUMENT_BUCKET_NAME: ${{ vars.DOCUMENT_BUCKET_NAME }}
+  AUDIT_STORE_NAME: ${{ vars.AUDIT_STORE_NAME }}
+  EVENT_BUS_NAME: ${{ vars.EVENT_BUS_NAME }}
+  WORK_QUEUE_URL: ${{ vars.WORK_QUEUE_URL }}
+  DEAD_LETTER_QUEUE_URL: ${{ vars.DEAD_LETTER_QUEUE_URL }}
+  IDENTITY_ASSERTION_SECRET: ${{ secrets.IDENTITY_ASSERTION_SECRET }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile=false
+      - run: pnpm typecheck
+      - run: pnpm build
+      - name: Start release candidate
+        run: |
+          nohup pnpm start > /tmp/workspaceirs-production.log 2>&1 &
+          echo $! > /tmp/workspaceirs-production.pid
+      - name: Certify local release candidate
+        env:
+          EXPECT_PRODUCTION_READY: "true"
+          SMOKE_BASE_URL: http://127.0.0.1:3000
+        run: pnpm test:smoke
+      - name: Certify deployed production URL
+        env:
+          EXPECT_PRODUCTION_READY: "true"
+          SMOKE_BASE_URL: ${{ inputs.production_base_url }}
+        run: pnpm test:smoke
+      - name: Show release candidate log on failure
+        if: failure()
+        run: cat /tmp/workspaceirs-production.log || true
+      - name: Stop release candidate
+        if: always()
+        run: |
+          if [ -f /tmp/workspaceirs-production.pid ]; then
+            kill "$(cat /tmp/workspaceirs-production.pid)" || true
+          fi
