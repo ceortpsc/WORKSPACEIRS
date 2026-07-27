@@ -1,13 +1,15 @@
 {
   "name": "workspaceirs",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "pnpm --filter @ross/web dev",
     "build": "pnpm --filter @ross/web build",
     "start": "pnpm --filter @ross/web start",
     "lint": "pnpm --filter @ross/web lint",
-    "typecheck": "pnpm --filter @ross/web typecheck"
+    "typecheck": "pnpm --filter @ross/web typecheck",
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "validate": "pnpm typecheck && pnpm build"
   }
 }
