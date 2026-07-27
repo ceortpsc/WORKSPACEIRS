@@ -2,7 +2,7 @@ name: Web CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, staging, develop]
   pull_request:
 
 permissions:
@@ -11,7 +11,13 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    env:
+      DEPLOYMENT_STAGE: ci
+      APP_VERSION: 1.0.0-ci
+      BUILD_COMMIT: ${{ github.sha }}
+      NEXT_PUBLIC_SITE_URL: https://example.invalid
+      SYNTHETIC_WORKBENCH_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -23,3 +29,21 @@ jobs:
       - run: pnpm install --frozen-lockfile=false
       - run: pnpm typecheck
       - run: pnpm build
+      - name: Start production server
+        run: |
+          nohup pnpm start > /tmp/workspaceirs-server.log 2>&1 &
+          echo $! > /tmp/workspaceirs-server.pid
+      - name: Smoke and security tests
+        env:
+          EXPECT_PRODUCTION_READY: "false"
+          SMOKE_BASE_URL: http://127.0.0.1:3000
+        run: pnpm test:smoke
+      - name: Show server log on failure
+        if: failure()
+        run: cat /tmp/workspaceirs-server.log || true
+      - name: Stop production server
+        if: always()
+        run: |
+          if [ -f /tmp/workspaceirs-server.pid ]; then
+            kill "$(cat /tmp/workspaceirs-server.pid)" || true
+          fi
