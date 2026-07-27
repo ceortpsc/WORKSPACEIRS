@@ -31,6 +31,11 @@ await waitForServer();
 await check('homepage','/',{},(response,body)=>response.status===200&&typeof body==='string'&&/Ross Tax|RTPSC Operations Fabric/i.test(body));
 await check('services route','/services',{},response=>response.status===200);
 await check('operations route','/operations-fabric',{},response=>response.status===200);
+await check('IRS forms catalog page','/irs-form-catalog',{},(response,body)=>response.status===200&&typeof body==='string'&&/IRS forms, schedules and filing-product catalog/i.test(body));
+await check('official IRS lookup contract','/api/v1/irs-forms/search?q=1040&page=0&pageSize=25',{},(response,body)=>{
+ if(response.status===200)return body?.ok===true&&body?.source?.official===true&&Array.isArray(body?.items);
+ return response.status===503&&body?.ok===false&&body?.error?.code==='IRS_CATALOG_UNAVAILABLE';
+});
 await check('health contract','/api/health',{},(response,body)=>response.status===200&&body?.status==='ok'&&body?.routeCount>=20);
 await check('platform status','/api/platform/status',{},(response,body)=>response.status===200&&body?.routeSummary?.total>=20&&body?.workflowRegistry?.controlGates===15);
 await check('route registry','/api/routes',{},(response,body)=>response.status===200&&body?.summary?.total>=20&&Array.isArray(body?.routes));
