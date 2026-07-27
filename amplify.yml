@@ -1,0 +1,22 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - corepack enable
+        - corepack prepare pnpm@9.15.0 --activate
+        - pnpm config set store-dir .pnpm-store
+        - pnpm install --no-frozen-lockfile
+    build:
+      commands:
+        - pnpm --filter @ross/web typecheck
+        - pnpm --filter @ross/web build
+  artifacts:
+    baseDirectory: apps/web/.next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - .pnpm-store/**/*
+      - node_modules/**/*
+      - apps/web/.next/cache/**/*
