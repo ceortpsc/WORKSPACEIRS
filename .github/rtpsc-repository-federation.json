@@ -2,6 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "contract": "rtpsc.repository-federation.v1",
   "owner": "Ross Tax Pro Software Co.",
+  "scope": "Ross Tax Pro Software Co. tax-software repositories and governed integration modules only",
+  "exclusions": [
+    "client-owned or client-commissioned applications",
+    "unrelated business operating systems",
+    "repositories that do not participate in RTPSC taxpayer, ERO, tax-practice or tax-software workflows"
+  ],
   "controlPlane": "ceortpsc/WORKSPACEIRS",
   "repositories": [
     {
@@ -10,9 +16,9 @@
       "defaultBranch": "main",
       "technology": ["TypeScript", "Next.js", "Node.js", "pnpm"],
       "responsibilities": [
-        "public and authenticated web experiences",
-        "service catalog and secure intake",
-        "client, practitioner, ERO and executive workspaces",
+        "public and authenticated tax-software web experiences",
+        "tax-practice service catalog and secure intake",
+        "taxpayer, practitioner, ERO and executive workspaces",
         "workflow transition policy",
         "Node orchestration gateway",
         "mobile shell",
@@ -30,8 +36,8 @@
         "tax calculation and workflow engines",
         "e-file lifecycle services",
         "transcript, refund and reconciliation workers",
-        "AI workforce services",
-        "internal platform CLIs"
+        "tax-practice AI workforce services",
+        "internal tax-platform CLIs"
       ],
       "publishes": ["OpenAPI contracts", "event schemas", "versioned packages", "worker health evidence"],
       "integrationRule": "WORKSPACEIRS may consume only tagged contracts, authenticated APIs or signed artifacts; runtime path imports are prohibited.",
@@ -39,34 +45,16 @@
     },
     {
       "name": "ceortpsc/rtpsc-backoffice-full-integration-module",
-      "role": "legacy-backoffice-source",
+      "role": "legacy-tax-backoffice-source",
       "defaultBranch": "main",
       "technology": ["JavaScript", "Next.js", "MongoDB", "Cloudflare"],
       "responsibilities": [
-        "legacy back-office drivers",
-        "migration-source connectors",
-        "operational compatibility references"
+        "legacy tax back-office drivers",
+        "tax-operation migration-source connectors",
+        "tax-platform compatibility references"
       ],
       "integrationRule": "All imports and data exchanges must pass through an anti-corruption adapter. No direct production dependency is allowed until package metadata, tests, security and versioning are normalized.",
       "releaseStatus": "quarantined"
-    },
-    {
-      "name": "ceortpsc/theapplianceclinic",
-      "role": "client-pos-and-store-operations-platform",
-      "relationship": "client-commissioned application developed and maintained as a separate customer system",
-      "defaultBranch": "main",
-      "technology": ["Web application", "Point of sale", "Store operations"],
-      "responsibilities": [
-        "point-of-sale and checkout operations",
-        "inventory and appliance product management",
-        "customer, order, invoice and payment workflows",
-        "repair, pickup, delivery and service operations",
-        "employee, scheduling, payroll and back-office administration",
-        "store analytics and operational reporting"
-      ],
-      "dataBoundary": "Client business and store-operational data must remain segregated from RTPSC taxpayer, tax-practice, ERO and professional-client records.",
-      "integrationRule": "This is an independently governed client platform, not an RTPSC internal vertical. No taxpayer or tax-practice data sharing is permitted. Only generalized, reviewed and non-confidential engineering patterns or packages may be reused across systems.",
-      "releaseStatus": "client-isolated"
     }
   ],
   "mandatoryControls": [
