@@ -55,8 +55,11 @@ jobs:
             echo 'The quality build continues, but release certification must reject an uncommitted lockfile.' >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Type-check enterprise web surface
-        run: pnpm --filter @ross/web typecheck
+      - name: Type-check all enterprise packages
+        run: pnpm typecheck:all
+
+      - name: Validate Node orchestration gateway
+        run: pnpm --filter @ross/orchestration-api check
 
       - name: Build production Next.js artifact
         run: pnpm --filter @ross/web build
@@ -69,6 +72,7 @@ jobs:
           test -f packages/workflow-engine/src/index.ts
           test -f packages/service-catalog/src/index.ts
           test -f packages/experience-system/src/index.ts
+          test -f backend/orchestration-api/server.mjs
 
       - name: Create release evidence manifest
         shell: bash
@@ -80,9 +84,15 @@ jobs:
           const files = [
             'apps/web/app/enterprise-experience/page.tsx',
             'apps/web/app/enterprise-experience/page.module.css',
+            'apps/web/app/services/page.tsx',
+            'apps/web/app/services/page.module.css',
+            'apps/web/app/services/[slug]/page.tsx',
+            'apps/web/app/services/[slug]/page.module.css',
             'packages/experience-system/src/index.ts',
             'packages/service-catalog/src/index.ts',
-            'packages/workflow-engine/src/index.ts'
+            'packages/workflow-engine/src/index.ts',
+            'backend/orchestration-api/server.mjs',
+            '.github/rtpsc-repository-federation.json'
           ];
           const artifacts = files.map((path) => {
             const bytes = fs.readFileSync(path);
@@ -106,19 +116,25 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  dependency-review:
-    name: Dependency risk review
-    if: github.event_name == 'pull_request'
+  dependency-audit:
+    name: Production dependency audit
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    timeout-minutes: 15
     steps:
       - name: Checkout governed source
         uses: actions/checkout@v6
-      - name: Review dependency changes
-        uses: actions/dependency-review-action@v4
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
         with:
-          fail-on-severity: high
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Activate pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@${PNPM_VERSION} --activate
+      - name: Install dependency graph locally
+        run: pnpm install --no-frozen-lockfile
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level high
 
   secret-pattern-review:
     name: Secret and forbidden-pattern review
@@ -148,7 +164,7 @@ jobs:
           test "$(grep -c "id: '" packages/experience-system/src/index.ts)" -ge 8
           test "$(grep -c "id: '" packages/workflow-engine/src/index.ts)" -ge 20
           test "$(grep -c "code: '" packages/service-catalog/src/index.ts)" -ge 20
-          if grep -RInE '>\s*(Submit|Continue|Process|Manage)\s*<' apps/web/app/enterprise-experience; then
+          if grep -RInE '>\s*(Submit|Continue|Process|Manage)\s*<' apps/web/app/enterprise-experience apps/web/app/services; then
             echo 'Generic action language is prohibited in the enterprise experience.' >&2
             exit 1
           fi
