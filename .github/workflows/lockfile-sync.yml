@@ -1,0 +1,64 @@
+name: Synchronize Tested pnpm Lockfile
+
+on:
+  push:
+    branches:
+      - 'enterprise/**'
+    paths:
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - 'apps/**/package.json'
+      - 'backend/**/package.json'
+      - 'packages/**/package.json'
+      - '.github/workflows/lockfile-sync.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pnpm-lockfile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synchronize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout enterprise branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Activate pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.0 --activate
+
+      - name: Generate resolved dependency graph
+        run: pnpm install --lockfile-only --no-frozen-lockfile
+
+      - name: Validate production dependency graph
+        run: pnpm audit --prod --audit-level high
+
+      - name: Commit tested lockfile when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- pnpm-lock.yaml && git ls-files --error-unmatch pnpm-lock.yaml >/dev/null 2>&1; then
+            echo 'pnpm-lock.yaml is already synchronized.'
+            exit 0
+          fi
+          git config user.name 'rtpsc-release-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add pnpm-lock.yaml
+          git commit -m 'build: synchronize tested pnpm dependency graph'
+          git push origin "HEAD:${GITHUB_REF_NAME}"

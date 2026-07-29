@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "contract": "rtpsc.repository-federation.v1",
+  "owner": "Ross Tax Pro Software Co.",
+  "controlPlane": "ceortpsc/WORKSPACEIRS",
+  "repositories": [
+    {
+      "name": "ceortpsc/WORKSPACEIRS",
+      "role": "enterprise-control-plane",
+      "defaultBranch": "main",
+      "technology": ["TypeScript", "Next.js", "Node.js", "pnpm"],
+      "responsibilities": [
+        "public and authenticated web experiences",
+        "service catalog and secure intake",
+        "client, practitioner, ERO and executive workspaces",
+        "workflow transition policy",
+        "Node orchestration gateway",
+        "mobile shell",
+        "release evidence and certification"
+      ],
+      "consumes": ["versioned API contracts", "signed artifacts", "release manifests"],
+      "releaseStatus": "primary"
+    },
+    {
+      "name": "ceortpsc/rtpsctaxplatform",
+      "role": "tax-engine-and-worker-plane",
+      "defaultBranch": "main",
+      "technology": ["JavaScript", "Node.js", "pnpm"],
+      "responsibilities": [
+        "tax calculation and workflow engines",
+        "e-file lifecycle services",
+        "transcript, refund and reconciliation workers",
+        "AI workforce services",
+        "internal platform CLIs"
+      ],
+      "publishes": ["OpenAPI contracts", "event schemas", "versioned packages", "worker health evidence"],
+      "integrationRule": "WORKSPACEIRS may consume only tagged contracts, authenticated APIs or signed artifacts; runtime path imports are prohibited.",
+      "releaseStatus": "upstream-controlled"
+    },
+    {
+      "name": "ceortpsc/rtpsc-backoffice-full-integration-module",
+      "role": "legacy-backoffice-source",
+      "defaultBranch": "main",
+      "technology": ["JavaScript", "Next.js", "MongoDB", "Cloudflare"],
+      "responsibilities": [
+        "legacy back-office drivers",
+        "migration-source connectors",
+        "operational compatibility references"
+      ],
+      "integrationRule": "All imports and data exchanges must pass through an anti-corruption adapter. No direct production dependency is allowed until package metadata, tests, security and versioning are normalized.",
+      "releaseStatus": "quarantined"
+    },
+    {
+      "name": "ceortpsc/theapplianceclinic",
+      "role": "separate-vertical-application",
+      "defaultBranch": "main",
+      "technology": ["Web application"],
+      "responsibilities": [
+        "appliance-clinic vertical operations"
+      ],
+      "integrationRule": "No taxpayer or tax-practice data sharing. Only reviewed, non-sensitive design, deployment and operational patterns may be promoted into shared packages.",
+      "releaseStatus": "isolated"
+    }
+  ],
+  "mandatoryControls": [
+    "repository ownership and CODEOWNERS",
+    "branch-based change review",
+    "contract versioning",
+    "dependency and secret review",
+    "build and release evidence",
+    "environment separation",
+    "human approval for material actions",
+    "fail-closed external adapters"
+  ]
+}

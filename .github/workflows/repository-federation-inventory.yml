@@ -1,0 +1,153 @@
+name: RTPSC Repository Federation Inventory
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 11 * * 1'
+  push:
+    paths:
+      - '.github/rtpsc-repository-federation.json'
+      - '.github/workflows/repository-federation-inventory.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v6
+        with:
+          path: federation/WORKSPACEIRS
+          persist-credentials: false
+
+      - name: Checkout tax engine plane
+        uses: actions/checkout@v6
+        with:
+          repository: ceortpsc/rtpsctaxplatform
+          ref: main
+          path: federation/rtpsctaxplatform
+          persist-credentials: false
+
+      - name: Checkout legacy backoffice source
+        uses: actions/checkout@v6
+        with:
+          repository: ceortpsc/rtpsc-backoffice-full-integration-module
+          ref: main
+          path: federation/rtpsc-backoffice-full-integration-module
+          persist-credentials: false
+
+      - name: Checkout isolated vertical application
+        uses: actions/checkout@v6
+        with:
+          repository: ceortpsc/theapplianceclinic
+          ref: main
+          path: federation/theapplianceclinic
+          persist-credentials: false
+
+      - name: Build immutable federation inventory
+        working-directory: federation/WORKSPACEIRS
+        shell: bash
+        run: |
+          mkdir -p ../../federation-evidence
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          const root = path.resolve('../');
+          const manifest = JSON.parse(fs.readFileSync('.github/rtpsc-repository-federation.json', 'utf8'));
+
+          function sha256(file) {
+            return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+          }
+
+          function gitSha(directory) {
+            const head = fs.readFileSync(path.join(directory, '.git', 'HEAD'), 'utf8').trim();
+            if (head.startsWith('ref: ')) {
+              const ref = head.slice(5);
+              return fs.readFileSync(path.join(directory, '.git', ref), 'utf8').trim();
+            }
+            return head;
+          }
+
+          const results = manifest.repositories.map((repo) => {
+            const shortName = repo.name.split('/')[1];
+            const directory = path.join(root, shortName);
+            const packagePath = path.join(directory, 'package.json');
+            let packageStatus = 'not-present';
+            let packageName = null;
+            let packageVersion = null;
+            let packageHash = null;
+            let packageError = null;
+
+            if (fs.existsSync(packagePath)) {
+              packageHash = sha256(packagePath);
+              try {
+                const parsed = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+                packageStatus = 'valid';
+                packageName = parsed.name ?? null;
+                packageVersion = parsed.version ?? null;
+              } catch (error) {
+                packageStatus = 'invalid';
+                packageError = error instanceof Error ? error.message : String(error);
+              }
+            }
+
+            return {
+              repository: repo.name,
+              role: repo.role,
+              expectedReleaseStatus: repo.releaseStatus,
+              commit: gitSha(directory),
+              packageStatus,
+              packageName,
+              packageVersion,
+              packageHash,
+              packageError
+            };
+          });
+
+          const evidence = {
+            contract: 'rtpsc.repository-federation-evidence.v1',
+            generatedAt: new Date().toISOString(),
+            controlPlaneCommit: process.env.GITHUB_SHA,
+            workflowRunId: process.env.GITHUB_RUN_ID,
+            repositories: results
+          };
+
+          fs.writeFileSync('../../federation-evidence/inventory.json', JSON.stringify(evidence, null, 2));
+          const markdown = [
+            '# RTPSC Repository Federation Inventory',
+            '',
+            `Generated: ${evidence.generatedAt}`,
+            '',
+            '| Repository | Role | Commit | Package | Expected status |',
+            '|---|---|---|---|---|',
+            ...results.map((item) => `| ${item.repository} | ${item.role} | ${item.commit.slice(0, 12)} | ${item.packageStatus} | ${item.expectedReleaseStatus} |`)
+          ].join('\n');
+          fs.writeFileSync('../../federation-evidence/inventory.md', markdown);
+          NODE
+
+      - name: Publish inventory summary
+        run: cat federation-evidence/inventory.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Warn on quarantined package metadata
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const inventory = require('./federation-evidence/inventory.json');
+          for (const repository of inventory.repositories) {
+            if (repository.packageStatus === 'invalid') {
+              console.log(`::warning title=Invalid package metadata::${repository.repository} remains quarantined: ${repository.packageError}`);
+            }
+          }
+          NODE
+
+      - name: Upload federation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtpsc-repository-federation-${{ github.sha }}
+          path: federation-evidence
+          if-no-files-found: error
+          retention-days: 90
