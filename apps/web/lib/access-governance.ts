@@ -1,0 +1,37 @@
+import {createHash} from 'node:crypto';
+
+export type CredentialType='PTIN'|'EFIN'|'CAF'|'ERO'|'STATE_EFILE'|'BANK_PRODUCT';
+export type CredentialStatus='PENDING_VERIFICATION'|'ACTIVE'|'SUSPENDED'|'EXPIRED'|'REVOKED';
+export type VerificationMethod='DOCUMENT_REVIEW'|'AUTHORITY_CONFIRMATION'|'ADMIN_ATTESTATION';
+export type GovernanceRole='OWNER_SUPER_ADMIN'|'COMPLIANCE_OFFICER'|'TAX_PRACTITIONER'|'SENIOR_REVIEWER'|'PREPARER'|'CLIENT_ACCOUNTANT'|'CLIENT_VIEW_ONLY'|'INTERN_ASSISTANT';
+export type Permission='MASTERFILE_READ'|'MASTERFILE_RECONCILE'|'TRANSCRIPT_READ'|'TRANSCRIPT_REQUEST'|'EFILE_PREPARE'|'EFILE_REVIEW'|'EFILE_APPROVE'|'EFILE_TRANSMIT'|'ACKNOWLEDGMENT_READ'|'CLIENT_READ'|'CLIENT_UPDATE'|'NOTICE_READ'|'NOTICE_RESPOND'|'PAYMENT_READ'|'REFUND_READ'|'REPORTS_READ'|'ANALYTICS_READ'|'USER_MANAGE'|'ROLE_MANAGE'|'CREDENTIAL_MANAGE'|'SYSTEM_ADMIN';
+
+export type CredentialInput={tenantId:string;ownerUserId:string;type:CredentialType;identifier:string;issuingAuthority:string;effectiveDate?:string;expirationDate?:string;verificationMethod:VerificationMethod;verificationEvidenceRefs:string[]};
+export type CredentialRecord={credentialId:string;tenantId:string;ownerUserId:string;type:CredentialType;maskedIdentifier:string;encryptedIdentifierRef:string;status:CredentialStatus;issuingAuthority:string;effectiveDate?:string;expirationDate?:string;verificationMethod:VerificationMethod;verificationEvidenceRefs:string[];verifiedBy?:string;verifiedAt?:string;lastReviewedAt?:string;nextReviewAt?:string;createdAt:string;updatedAt:string;};
+export type AccessDecisionInput={userId:string;tenantId:string;role:GovernanceRole;permission:Permission;mfaVerified:boolean;credentialVerified:boolean;purpose?:string;caseId?:string;credentialId?:string;approvalRequired?:boolean;approvalSatisfied?:boolean;sessionRisk?:'LOW'|'MODERATE'|'HIGH'|'CRITICAL'};
+export type AccessDecision={allowed:boolean;decisionId:string;reasonCodes:string[];userId:string;tenantId:string;role:GovernanceRole;permission:Permission;caseId?:string;credentialId?:string;mfaVerified:boolean;credentialVerified:boolean;approvalRequired:boolean;approvalSatisfied:boolean;evaluatedAt:string};
+
+export const credentialTypes:CredentialType[]=['PTIN','EFIN','CAF','ERO','STATE_EFILE','BANK_PRODUCT'];
+export const governanceRoles:GovernanceRole[]=['OWNER_SUPER_ADMIN','COMPLIANCE_OFFICER','TAX_PRACTITIONER','SENIOR_REVIEWER','PREPARER','CLIENT_ACCOUNTANT','CLIENT_VIEW_ONLY','INTERN_ASSISTANT'];
+export const permissions:Permission[]=['MASTERFILE_READ','MASTERFILE_RECONCILE','TRANSCRIPT_READ','TRANSCRIPT_REQUEST','EFILE_PREPARE','EFILE_REVIEW','EFILE_APPROVE','EFILE_TRANSMIT','ACKNOWLEDGMENT_READ','CLIENT_READ','CLIENT_UPDATE','NOTICE_READ','NOTICE_RESPOND','PAYMENT_READ','REFUND_READ','REPORTS_READ','ANALYTICS_READ','USER_MANAGE','ROLE_MANAGE','CREDENTIAL_MANAGE','SYSTEM_ADMIN'];
+
+export const rolePermissions:Record<GovernanceRole,Permission[]|['*']>={
+ OWNER_SUPER_ADMIN:['*'],
+ COMPLIANCE_OFFICER:['MASTERFILE_READ','MASTERFILE_RECONCILE','TRANSCRIPT_READ','EFILE_REVIEW','ACKNOWLEDGMENT_READ','CLIENT_READ','NOTICE_READ','REPORTS_READ','ANALYTICS_READ'],
+ TAX_PRACTITIONER:['MASTERFILE_READ','TRANSCRIPT_READ','EFILE_PREPARE','CLIENT_READ','CLIENT_UPDATE','NOTICE_READ'],
+ SENIOR_REVIEWER:['MASTERFILE_READ','MASTERFILE_RECONCILE','TRANSCRIPT_READ','EFILE_REVIEW','ACKNOWLEDGMENT_READ','CLIENT_READ'],
+ PREPARER:['MASTERFILE_READ','EFILE_PREPARE','ACKNOWLEDGMENT_READ','CLIENT_READ'],
+ CLIENT_ACCOUNTANT:['CLIENT_READ','CLIENT_UPDATE'],
+ CLIENT_VIEW_ONLY:['CLIENT_READ'],
+ INTERN_ASSISTANT:[]
+};
+
+const credentialStore=new Map<string,CredentialRecord>();
+const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
+export function maskCredential(type:CredentialType,value:string){const normalized=value.replace(/\s+/g,'').trim();if(normalized.length<=4)return '••••';const prefix=type==='PTIN'?normalized.slice(0,3):normalized.slice(0,2);return `${prefix}${'•'.repeat(Math.max(4,normalized.length-prefix.length-2))}${normalized.slice(-2)}`;}
+export function validateCredential(input:CredentialInput){const errors:string[]=[];if(!input.tenantId?.trim())errors.push('tenantId is required.');if(!input.ownerUserId?.trim())errors.push('ownerUserId is required.');if(!credentialTypes.includes(input.type))errors.push('A supported credential type is required.');if(input.identifier.trim().length<5)errors.push('A complete credential identifier is required for encrypted storage.');if(!input.issuingAuthority?.trim())errors.push('issuingAuthority is required.');if(!input.verificationEvidenceRefs?.length)errors.push('At least one verification evidence reference is required.');return errors;}
+export function createCredential(input:CredentialInput):CredentialRecord{const now=new Date().toISOString();const id=`cred_${crypto.randomUUID()}`;const record:CredentialRecord={credentialId:id,tenantId:input.tenantId,ownerUserId:input.ownerUserId,type:input.type,maskedIdentifier:maskCredential(input.type,input.identifier),encryptedIdentifierRef:`kms://credential/${hash(`${input.tenantId}|${id}|${input.identifier}`).slice(0,32)}`,status:'PENDING_VERIFICATION',issuingAuthority:input.issuingAuthority,effectiveDate:input.effectiveDate,expirationDate:input.expirationDate,verificationMethod:input.verificationMethod,verificationEvidenceRefs:[...new Set(input.verificationEvidenceRefs)],createdAt:now,updatedAt:now};credentialStore.set(id,record);return record;}
+export function listCredentials(tenantId:string){return [...credentialStore.values()].filter(item=>item.tenantId===tenantId).map(item=>({...item}));}
+export function updateCredentialStatus(tenantId:string,credentialId:string,status:CredentialStatus,actor:string){const record=credentialStore.get(credentialId);if(!record||record.tenantId!==tenantId)return null;const now=new Date().toISOString();const updated={...record,status,updatedAt:now,...(status==='ACTIVE'?{verifiedBy:actor,verifiedAt:now,lastReviewedAt:now,nextReviewAt:new Date(Date.now()+365*86400000).toISOString()}:{} )};credentialStore.set(credentialId,updated);return updated;}
+export function hasPermission(role:GovernanceRole,permission:Permission){const assigned=rolePermissions[role];return assigned[0]==='*'||(assigned as Permission[]).includes(permission);}
+export function authorizeAccess(input:AccessDecisionInput):AccessDecision{const reasons:string[]=[];if(!hasPermission(input.role,input.permission))reasons.push('ROLE_PERMISSION_DENIED');if(!input.mfaVerified)reasons.push('MFA_REQUIRED');if(['EFILE_TRANSMIT','TRANSCRIPT_REQUEST','CREDENTIAL_MANAGE','SYSTEM_ADMIN'].includes(input.permission)&&!input.credentialVerified)reasons.push('ACTIVE_CREDENTIAL_REQUIRED');if(!input.purpose?.trim())reasons.push('PURPOSE_REQUIRED');if(['HIGH','CRITICAL'].includes(input.sessionRisk??'LOW'))reasons.push('SESSION_RISK_BLOCK');const approvalRequired=input.approvalRequired??['EFILE_APPROVE','EFILE_TRANSMIT','ROLE_MANAGE','CREDENTIAL_MANAGE','SYSTEM_ADMIN'].includes(input.permission);const approvalSatisfied=input.approvalSatisfied??false;if(approvalRequired&&!approvalSatisfied)reasons.push('HUMAN_APPROVAL_REQUIRED');return {allowed:reasons.length===0,decisionId:`dec_${crypto.randomUUID()}`,reasonCodes:reasons,userId:input.userId,tenantId:input.tenantId,role:input.role,permission:input.permission,caseId:input.caseId,credentialId:input.credentialId,mfaVerified:input.mfaVerified,credentialVerified:input.credentialVerified,approvalRequired,approvalSatisfied,evaluatedAt:new Date().toISOString()};}

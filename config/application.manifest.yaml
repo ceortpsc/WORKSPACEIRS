@@ -1,0 +1,59 @@
+application:
+  name: WORKSPACEIRS
+  displayName: ROSS.CO ERO Masterfile Reconciliation Suite
+  organization: Ross Tax Pro Software Co.
+  repository: ceortpsc/WORKSPACEIRS
+  applicationType: enterprise-multi-tenant-tax-operations-platform
+  primaryEnvironment: production
+  environments: [local, development, testing, staging, production]
+  primaryRegion: us-east-1
+  disasterRecoveryRegion: us-east-2
+  releaseChannel: controlled
+  version: 0.13.0
+  apiVersion: v1
+  schemaVersion: 1.0.0
+  infrastructureVersion: 1.0.0
+
+identity:
+  productIdentifiers:
+    - WORKSPACEIRS
+    - RTPSC-OPERATIONS-FABRIC
+    - ROSS-CO-MASTERFILE-SUITE
+  domains:
+    - rosstaxsoftware.com
+    - rosstaxprosoftware.com
+  resourcePrefix: workspaceirs
+  resourceSuffixStrategy: environment-and-region
+
+ownership:
+  executiveOwner: CEO
+  serviceOwner: Platform Engineering
+  securityOwner: Security and Compliance
+  releaseOwner: Release Engineering
+  costCenter: RTPSC-PLATFORM
+
+classification:
+  defaultDataClassification: restricted
+  complianceScopes:
+    - IRS-Publication-4557-aligned-controls
+    - WISP
+    - privacy-and-record-retention
+    - role-based-and-attribute-based-access
+  externalAuthorityNotImplied: true
+
+tags:
+  Application: WORKSPACEIRS
+  Organization: ROSS.CO
+  ManagedBy: Infrastructure-as-Code
+  Repository: ceortpsc/WORKSPACEIRS
+  Owner: Platform-Engineering
+  CostCenter: RTPSC-PLATFORM
+  Criticality: mission-critical
+  BackupRequired: 'true'
+  DisasterRecovery: required
+
+truthBoundaries:
+  - No direct IRS Master File access is claimed.
+  - No IRS MeF authorization is claimed without external evidence.
+  - No credential status is treated as verified from UI display alone.
+  - Production readiness requires machine-readable PASS evidence.
