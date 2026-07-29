@@ -8,7 +8,7 @@ await waitForServer();
 await check('homepage','/',{},(response,body)=>response.status===200&&typeof body==='string'&&/Ross Tax|RTPSC Operations Fabric/i.test(body));
 await check('services route','/services',{},response=>response.status===200);
 await check('operations route-specific rendering','/operations-fabric',{},(response,body)=>response.status===200&&typeof body==='string'&&/command center/i.test(body)&&/Operational queues/i.test(body));
-await check('efile route-specific rendering','/efile-workbench',{},(response,body)=>response.status===200&&typeof body==='string'&&/E-file Workbench command center/i.test(body));
+await check('efile route-specific rendering','/efile-workbench',{},(response,body)=>response.status===200&&typeof body==='string'&&/E-file Workbench/i.test(body)&&/command center/i.test(body)&&/Schema validation/i.test(body));
 await check('registration system','/register',{},(response,body)=>response.status===200&&typeof body==='string'&&/Enterprise Registration System/i.test(body)&&/Registration application/i.test(body));
 await check('credential governance dashboard','/admin/credentials',{},(response,body)=>response.status===200&&typeof body==='string'&&/Credential and RBAC Control Center/i.test(body));
 await check('RBAC permissions matrix','/admin/rbac',{},(response,body)=>response.status===200&&typeof body==='string'&&/RBAC Strict Roles and Permissions Matrix/i.test(body));
