@@ -7,6 +7,12 @@
     "node": ">=22",
     "pnpm": ">=9.15.0"
   },
+  "pnpm": {
+    "overrides": {
+      "sharp": "0.35.0",
+      "postcss": "8.5.18"
+    }
+  },
   "scripts": {
     "dev": "pnpm --filter @ross/web dev",
     "dev:web": "pnpm --filter @ross/web dev",
