@@ -52,14 +52,21 @@
     },
     {
       "name": "ceortpsc/theapplianceclinic",
-      "role": "separate-vertical-application",
+      "role": "client-pos-and-store-operations-platform",
+      "relationship": "client-commissioned application developed and maintained as a separate customer system",
       "defaultBranch": "main",
-      "technology": ["Web application"],
+      "technology": ["Web application", "Point of sale", "Store operations"],
       "responsibilities": [
-        "appliance-clinic vertical operations"
+        "point-of-sale and checkout operations",
+        "inventory and appliance product management",
+        "customer, order, invoice and payment workflows",
+        "repair, pickup, delivery and service operations",
+        "employee, scheduling, payroll and back-office administration",
+        "store analytics and operational reporting"
       ],
-      "integrationRule": "No taxpayer or tax-practice data sharing. Only reviewed, non-sensitive design, deployment and operational patterns may be promoted into shared packages.",
-      "releaseStatus": "isolated"
+      "dataBoundary": "Client business and store-operational data must remain segregated from RTPSC taxpayer, tax-practice, ERO and professional-client records.",
+      "integrationRule": "This is an independently governed client platform, not an RTPSC internal vertical. No taxpayer or tax-practice data sharing is permitted. Only generalized, reviewed and non-confidential engineering patterns or packages may be reused across systems.",
+      "releaseStatus": "client-isolated"
     }
   ],
   "mandatoryControls": [
