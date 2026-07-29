@@ -1,0 +1,154 @@
+name: Enterprise Quality Gates
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - main
+      - 'enterprise/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enterprise-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '9.15.0'
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  contract-and-build:
+    name: Contracts, types and production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout governed source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Activate pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@${PNPM_VERSION} --activate
+          pnpm --version
+
+      - name: Install workspace dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Report lockfile drift
+        shell: bash
+        run: |
+          if ! git diff --quiet -- pnpm-lock.yaml; then
+            echo '::warning file=pnpm-lock.yaml::Workspace dependencies changed the lockfile. Commit the generated lockfile before production release.'
+            echo '### Lockfile drift detected' >> "$GITHUB_STEP_SUMMARY"
+            echo 'The quality build continues, but release certification must reject an uncommitted lockfile.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Type-check enterprise web surface
+        run: pnpm --filter @ross/web typecheck
+
+      - name: Build production Next.js artifact
+        run: pnpm --filter @ross/web build
+
+      - name: Validate controlled API contracts
+        shell: bash
+        run: |
+          test -f apps/web/app/api/v1/enterprise/catalog/route.ts
+          test -f apps/web/app/api/v1/enterprise/transitions/route.ts
+          test -f packages/workflow-engine/src/index.ts
+          test -f packages/service-catalog/src/index.ts
+          test -f packages/experience-system/src/index.ts
+
+      - name: Create release evidence manifest
+        shell: bash
+        run: |
+          mkdir -p release-evidence
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const files = [
+            'apps/web/app/enterprise-experience/page.tsx',
+            'apps/web/app/enterprise-experience/page.module.css',
+            'packages/experience-system/src/index.ts',
+            'packages/service-catalog/src/index.ts',
+            'packages/workflow-engine/src/index.ts'
+          ];
+          const artifacts = files.map((path) => {
+            const bytes = fs.readFileSync(path);
+            return { path, bytes: bytes.length, sha256: crypto.createHash('sha256').update(bytes).digest('hex') };
+          });
+          fs.writeFileSync('release-evidence/manifest.json', JSON.stringify({
+            contract: 'rtpsc.release-evidence.v1',
+            repository: process.env.GITHUB_REPOSITORY,
+            commit: process.env.GITHUB_SHA,
+            runId: process.env.GITHUB_RUN_ID,
+            generatedAt: new Date().toISOString(),
+            artifacts
+          }, null, 2));
+          NODE
+
+      - name: Upload release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: enterprise-release-evidence-${{ github.sha }}
+          path: release-evidence
+          if-no-files-found: error
+          retention-days: 30
+
+  dependency-review:
+    name: Dependency risk review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout governed source
+        uses: actions/checkout@v6
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  secret-pattern-review:
+    name: Secret and forbidden-pattern review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout governed source
+        uses: actions/checkout@v6
+      - name: Reject committed credential patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE --exclude-dir=.git --exclude='*.md' '(BEGIN (RSA|EC|OPENSSH) PRIVATE KEY|AKIA[0-9A-Z]{16}|sk-proj-[A-Za-z0-9_-]{20,}|client_secret[[:space:]]*[:=][[:space:]]*[A-Za-z0-9_-]{12,})' .; then
+            echo 'Credential-like material detected. Replace it with a secret reference.' >&2
+            exit 1
+          fi
+
+  route-governance:
+    name: Route and transition governance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout governed source
+        uses: actions/checkout@v6
+      - name: Enforce explicit domain action vocabulary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(grep -c "id: '" packages/experience-system/src/index.ts)" -ge 8
+          test "$(grep -c "id: '" packages/workflow-engine/src/index.ts)" -ge 20
+          test "$(grep -c "code: '" packages/service-catalog/src/index.ts)" -ge 20
+          if grep -RInE '>\s*(Submit|Continue|Process|Manage)\s*<' apps/web/app/enterprise-experience; then
+            echo 'Generic action language is prohibited in the enterprise experience.' >&2
+            exit 1
+          fi
