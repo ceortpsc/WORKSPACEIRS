@@ -1,0 +1,14 @@
+# Ross Tax Pro Software Co. enterprise ownership
+* @ceortpsc
+
+# Material workflow, ERO, security and release controls
+/packages/workflow-engine/ @ceortpsc
+/packages/experience-system/ @ceortpsc
+/packages/service-catalog/ @ceortpsc
+/backend/orchestration-api/ @ceortpsc
+/apps/web/app/api/ @ceortpsc
+/apps/web/app/efile-workbench/ @ceortpsc
+/apps/web/app/compliance/ @ceortpsc
+/apps/web/app/infrastructure/ @ceortpsc
+/.github/workflows/ @ceortpsc
+/.github/rtpsc-repository-federation.json @ceortpsc
