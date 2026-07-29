@@ -4,12 +4,13 @@
 
 ## Repository federation
 
+This federation applies only to repositories that participate directly in Ross Tax Pro Software Co. taxpayer, ERO, tax-practice, tax-software, compliance, or tax-platform workflows. Client-owned and client-commissioned business applications are governed separately and are not part of this architecture.
+
 | Repository | Governed responsibility | Integration rule |
 |---|---|---|
-| `ceortpsc/WORKSPACEIRS` | Next.js web platform, client/ERO workspaces, design system, workflow routing, release evidence, API façade | Primary enterprise application and deployment control plane |
+| `ceortpsc/WORKSPACEIRS` | Next.js tax-software platform, client/ERO workspaces, design system, workflow routing, release evidence, API façade | Primary enterprise tax-software application and deployment control plane |
 | `ceortpsc/rtpsctaxplatform` | Tax engines, e-file lifecycle, worker services, transcript/refund/masterfile intelligence, internal CLIs | Consumed through versioned contracts and adapters; never imported by path at runtime |
-| `ceortpsc/rtpsc-backoffice-full-integration-module` | Legacy back-office connectors and operational migration sources | Quarantined behind an anti-corruption layer until package metadata, security, and tests pass |
-| `ceortpsc/theapplianceclinic` | Client-commissioned point-of-sale and store-operations platform for appliance sales, inventory, service, pickup, delivery, employees, payroll, invoices and reporting | Independently governed customer system; client/store data remains segregated from all RTPSC taxpayer, ERO and tax-practice data. Only generalized, reviewed and non-confidential engineering patterns may be reused |
+| `ceortpsc/rtpsc-backoffice-full-integration-module` | Legacy tax back-office connectors and operational migration sources | Quarantined behind an anti-corruption layer until package metadata, security, and tests pass |
 
 ## Product surfaces
 
