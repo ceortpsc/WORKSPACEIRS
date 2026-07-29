@@ -52,7 +52,7 @@ jobs:
           if ! git diff --quiet -- pnpm-lock.yaml; then
             echo '::warning file=pnpm-lock.yaml::Workspace dependencies changed the lockfile. Commit the generated lockfile before production release.'
             echo '### Lockfile drift detected' >> "$GITHUB_STEP_SUMMARY"
-            echo 'The quality build continues, but release certification must reject an uncommitted lockfile.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'The tested lockfile is included in the release-evidence artifact for controlled promotion.' >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Type-check all enterprise packages
@@ -78,6 +78,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-evidence
+          cp pnpm-lock.yaml release-evidence/pnpm-lock.yaml
           node - <<'NODE'
           const fs = require('node:fs');
           const crypto = require('node:crypto');
@@ -92,7 +93,8 @@ jobs:
             'packages/service-catalog/src/index.ts',
             'packages/workflow-engine/src/index.ts',
             'backend/orchestration-api/server.mjs',
-            '.github/rtpsc-repository-federation.json'
+            '.github/rtpsc-repository-federation.json',
+            'release-evidence/pnpm-lock.yaml'
           ];
           const artifacts = files.map((path) => {
             const bytes = fs.readFileSync(path);
