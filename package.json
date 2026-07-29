@@ -1,15 +1,26 @@
 {
   "name": "workspaceirs",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9.15.0"
+  },
   "scripts": {
     "dev": "pnpm --filter @ross/web dev",
+    "dev:web": "pnpm --filter @ross/web dev",
     "build": "pnpm --filter @ross/web build",
+    "build:web": "pnpm --filter @ross/web build",
     "start": "pnpm --filter @ross/web start",
     "lint": "pnpm --filter @ross/web lint",
     "typecheck": "pnpm --filter @ross/web typecheck",
+    "typecheck:all": "pnpm -r --if-present typecheck",
     "test:smoke": "node scripts/smoke-test.mjs",
-    "validate": "pnpm typecheck && pnpm build"
+    "validate": "pnpm typecheck && pnpm build",
+    "validate:enterprise": "pnpm typecheck:all && pnpm --filter @ross/web build",
+    "mobile:sync": "pnpm --filter @ross/mobile sync",
+    "mobile:ios": "pnpm --filter @ross/mobile open:ios",
+    "mobile:android": "pnpm --filter @ross/mobile open:android"
   }
 }
