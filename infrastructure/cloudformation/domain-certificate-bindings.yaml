@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: WORKSPACEIRS certificate and Route 53 bindings for rosstaxprofessionals.com
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: rosstaxprofessionals.com
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+  WebDistributionDomainName:
+    Type: String
+    Description: CloudFront distribution domain name, for example d123.cloudfront.net
+  WebDistributionHostedZoneId:
+    Type: String
+    Default: Z2FDTNDATAQYW2
+    Description: CloudFront global Route 53 hosted zone ID
+  ApiRegionalDomainName:
+    Type: String
+    Default: ''
+    Description: Optional API Gateway regional custom-domain target
+  ApiRegionalHostedZoneId:
+    Type: String
+    Default: ''
+    Description: Optional API Gateway regional hosted-zone ID
+
+Conditions:
+  HasApiTarget: !And
+    - !Not [!Equals [!Ref ApiRegionalDomainName, '']]
+    - !Not [!Equals [!Ref ApiRegionalHostedZoneId, '']]
+
+Resources:
+  DomainCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      SubjectAlternativeNames:
+        - !Sub '*.${DomainName}'
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZoneId
+        - DomainName: !Sub '*.${DomainName}'
+          HostedZoneId: !Ref HostedZoneId
+      Tags:
+        - Key: Application
+          Value: WORKSPACEIRS
+        - Key: Organization
+          Value: Ross Tax Pro Software Co.
+        - Key: Environment
+          Value: production
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: DataClassification
+          Value: internal
+        - Key: ComplianceScope
+          Value: tax-operations
+
+  ApexAlias:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !Ref WebDistributionDomainName
+        HostedZoneId: !Ref WebDistributionHostedZoneId
+        EvaluateTargetHealth: false
+
+  WildcardPortalAliases:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      RecordSets:
+        - {Name: !Sub 'www.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'app.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'portal.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'clients.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'ero.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'practitioners.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'admin.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'staff.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'academy.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'masterfile.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'refunds.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'notices.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'audit.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'reports.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'support.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'docs.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'developer.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+        - {Name: !Sub 'status.${DomainName}', Type: A, AliasTarget: {DNSName: !Ref WebDistributionDomainName, HostedZoneId: !Ref WebDistributionHostedZoneId, EvaluateTargetHealth: false}}
+
+  ApiAlias:
+    Type: AWS::Route53::RecordSet
+    Condition: HasApiTarget
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub 'api.${DomainName}'
+      Type: A
+      AliasTarget:
+        DNSName: !Ref ApiRegionalDomainName
+        HostedZoneId: !Ref ApiRegionalHostedZoneId
+        EvaluateTargetHealth: false
+
+Outputs:
+  CertificateArn:
+    Value: !Ref DomainCertificate
+  ApexDomain:
+    Value: !Ref DomainName
+  PortalDomain:
+    Value: !Sub 'portal.${DomainName}'
+  EroDomain:
+    Value: !Sub 'ero.${DomainName}'
+  PractitionerDomain:
+    Value: !Sub 'practitioners.${DomainName}'
+  ApiDomain:
+    Condition: HasApiTarget
+    Value: !Sub 'api.${DomainName}'
