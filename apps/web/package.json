@@ -1,15 +1,19 @@
 {
   "name": "@ross/web",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "validate:enterprise": "tsc --noEmit && next build"
   },
   "dependencies": {
+    "@ross/experience-system": "workspace:*",
+    "@ross/service-catalog": "workspace:*",
+    "@ross/workflow-engine": "workspace:*",
     "next": "15.2.4",
     "react": "19.0.0",
     "react-dom": "19.0.0"
