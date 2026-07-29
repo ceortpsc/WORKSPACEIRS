@@ -9,7 +9,7 @@
 | `ceortpsc/WORKSPACEIRS` | Next.js web platform, client/ERO workspaces, design system, workflow routing, release evidence, API façade | Primary enterprise application and deployment control plane |
 | `ceortpsc/rtpsctaxplatform` | Tax engines, e-file lifecycle, worker services, transcript/refund/masterfile intelligence, internal CLIs | Consumed through versioned contracts and adapters; never imported by path at runtime |
 | `ceortpsc/rtpsc-backoffice-full-integration-module` | Legacy back-office connectors and operational migration sources | Quarantined behind an anti-corruption layer until package metadata, security, and tests pass |
-| `ceortpsc/theapplianceclinic` | Separate vertical application | No taxpayer-data sharing; only reusable non-sensitive platform patterns may be promoted |
+| `ceortpsc/theapplianceclinic` | Client-commissioned point-of-sale and store-operations platform for appliance sales, inventory, service, pickup, delivery, employees, payroll, invoices and reporting | Independently governed customer system; client/store data remains segregated from all RTPSC taxpayer, ERO and tax-practice data. Only generalized, reviewed and non-confidential engineering patterns may be reused |
 
 ## Product surfaces
 
