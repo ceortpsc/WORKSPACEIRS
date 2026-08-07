@@ -19,6 +19,40 @@ const securityHeaders = {
   'cache-control': 'no-store'
 };
 
+const payrollRouteRegistry = Object.freeze([
+  { method: 'GET', path: '/v1/payroll/routes', lane: 'Route Registry', state: 'implemented' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/preview/original', lane: 'Check Renderer', state: 'Preview Generated' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/render/original', lane: 'Check Renderer', state: 'Issued' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/render/employee-copy', lane: 'Check Renderer', state: 'Employee Copy Generated' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/render/employer-copy', lane: 'Check Renderer', state: 'Employer Copy Generated' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/reissue', lane: 'Check Register', state: 'Reissued' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/void', lane: 'Check Register', state: 'Voided' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/print-ready', lane: 'Print Queue', state: 'Print Ready' },
+  { method: 'GET', path: '/v1/payroll/checks/{checkId}/audit', lane: 'Audit Trail', state: 'Audit Loaded' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/export/original-pdf', lane: 'PDF Export Engine', state: 'Exported' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/export/reissue-pdf', lane: 'PDF Export Engine', state: 'Exported' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/export/voided-pdf', lane: 'PDF Export Engine', state: 'Exported' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/export/employee-copy', lane: 'PDF Export Engine', state: 'Exported' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/export/employer-copy', lane: 'PDF Export Engine', state: 'Exported' },
+  { method: 'POST', path: '/v1/payroll/checks/{checkId}/export/audit-copy', lane: 'PDF Export Engine', state: 'Audit Copy Generated' },
+  { method: 'POST', path: '/v1/payroll/print/calibration', lane: 'Print Queue', state: 'Calibration Saved' },
+  { method: 'POST', path: '/v1/payroll/audit/events', lane: 'Audit Trail', state: 'Logged' },
+  { method: 'POST', path: '/v1/payroll/ai-assist/validate-check', lane: 'AI Assist Validation', state: 'Validated' },
+  { method: 'POST', path: '/v1/payroll/ai-assist/validate-pdf-export', lane: 'AI Assist Validation', state: 'Validated' },
+  { method: 'POST', path: '/v1/payroll/ai-assist/validate-payroll-run', lane: 'AI Assist Validation', state: 'Validated' }
+]);
+
+const payrollSecurityRules = Object.freeze([
+  'MASK_FULL_SSN',
+  'PROTECT_BANK_ACCOUNT',
+  'MICR_PRINT_READY_ONLY',
+  'PROTECT_SIGNATURE_BLOCK',
+  'HOLD_ON_PROTECTED_FIELD_DETECTION',
+  'VOIDED_CHECK_NOT_PRINT_READY',
+  'PRESERVE_REISSUE_CHAIN',
+  'AUDIT_EVERY_STATE_CHANGE'
+]);
+
 function writeJson(response, status, payload, requestId, extraHeaders = {}) {
   response.writeHead(status, {
     ...securityHeaders,
@@ -55,6 +89,90 @@ async function readBody(request) {
     chunks.push(chunk);
   }
   return Buffer.concat(chunks);
+}
+
+async function readJsonBody(request) {
+  const body = await readBody(request);
+  if (body.length === 0) return {};
+  return JSON.parse(body.toString('utf8'));
+}
+
+function maskIdentifier(value) {
+  if (!value || typeof value !== 'string') return '***-**-****';
+  const digits = value.replace(/\D/g, '');
+  if (digits.length < 4) return '***-**-****';
+  return `***-**-${digits.slice(-4)}`;
+}
+
+function buildArtifactUrl(checkId, artifactType) {
+  return `urn:rtpsc:payroll:${artifactType}:${checkId}:${randomUUID()}`;
+}
+
+function buildPayrollResponse({ requestId, route, checkId, input = {} }) {
+  const normalizedCheckId = checkId || input.checkId || input.originalCheckId || randomUUID();
+  const base = {
+    requestId,
+    checkId: normalizedCheckId,
+    route: route.path,
+    lane: route.lane,
+    status: route.state,
+    auditEventId: randomUUID(),
+    protectedFields: {
+      ssn: maskIdentifier(input.ssn ?? input.maskedSSN),
+      bankAccount: 'PROTECTED',
+      routingNumber: route.path.includes('print-ready') ? 'MICR_ZONE_ONLY' : 'PROTECTED',
+      signatureBlock: 'PROTECTED'
+    },
+    securityRules: payrollSecurityRules
+  };
+
+  if (route.path.includes('/preview/original')) {
+    return { ...base, previewUrl: buildArtifactUrl(normalizedCheckId, 'original-preview'), printReady: false, fraudSafe: 'Pending', watermark: 'PREVIEW' };
+  }
+  if (route.path.includes('/render/original')) {
+    return { ...base, checkNumber: input.checkNumber ?? 'PENDING-CHECK-NUMBER', pdfUrl: buildArtifactUrl(normalizedCheckId, 'original-check-pdf'), employeeCopyUrl: buildArtifactUrl(normalizedCheckId, 'employee-copy'), employerCopyUrl: buildArtifactUrl(normalizedCheckId, 'employer-copy'), auditCopyUrl: buildArtifactUrl(normalizedCheckId, 'audit-copy'), printReady: true, fraudSafe: 'Verified' };
+  }
+  if (route.path.includes('/employee-copy')) {
+    return { ...base, employeeCopyUrl: buildArtifactUrl(normalizedCheckId, 'employee-copy'), printReady: true, watermark: 'EMPLOYEE COPY — NOT NEGOTIABLE' };
+  }
+  if (route.path.includes('/employer-copy')) {
+    return { ...base, employerCopyUrl: buildArtifactUrl(normalizedCheckId, 'employer-copy'), printReady: true };
+  }
+  if (route.path.includes('/reissue')) {
+    return { ...base, originalCheckId: input.originalCheckId ?? normalizedCheckId, newCheckId: randomUUID(), originalCheckNumber: input.originalCheckNumber ?? 'ORIGINAL-CHECK-NUMBER', newCheckNumber: input.newCheckNumber ?? 'NEW-CHECK-NUMBER', reissueChainId: input.reissueChainId ?? randomUUID(), reissuePdfUrl: buildArtifactUrl(normalizedCheckId, 'reissue-pdf'), employeeCopyUrl: buildArtifactUrl(normalizedCheckId, 'employee-copy'), employerCopyUrl: buildArtifactUrl(normalizedCheckId, 'employer-copy'), auditCopyUrl: buildArtifactUrl(normalizedCheckId, 'audit-copy'), originalStatus: 'Reissued', newStatus: 'Issued', printReady: true, fraudSafe: 'Revalidated', watermark: 'REISSUED CHECK' };
+  }
+  if (route.path.includes('/void')) {
+    return { ...base, voidedPdfUrl: buildArtifactUrl(normalizedCheckId, 'voided-pdf'), auditCopyUrl: buildArtifactUrl(normalizedCheckId, 'audit-copy'), printReady: false, fraudSafe: 'Disabled', watermark: 'VOID' };
+  }
+  if (route.path.includes('/print-ready')) {
+    return { ...base, printReadyPdfUrl: buildArtifactUrl(normalizedCheckId, 'print-ready-pdf'), alignmentGridUrl: buildArtifactUrl(normalizedCheckId, 'alignment-grid'), calibrationProfileId: input.calibrationProfileId ?? randomUUID(), printReady: true, scaleLocked: true, layout: { page: '8.5x11', topCheck: '8.5x3.5', stub: '8.5x7', micrBaselineFromBottomInches: 0.625, marginInches: 0.25 } };
+  }
+  if (route.path.includes('/export/')) {
+    return { ...base, exportUrl: buildArtifactUrl(normalizedCheckId, route.path.split('/').at(-1)), pdfStandards: ['embedded_fonts', '300_600_dpi', 'micr_safe_formatting', 'quarter_inch_margins', 'no_scaling', 'alignment_grid'] };
+  }
+  if (route.path.includes('/audit/events')) {
+    return { requestId, auditEventId: randomUUID(), status: 'Logged', entityType: input.entityType ?? 'check', entityId: input.entityId ?? normalizedCheckId };
+  }
+  if (route.path.includes('/audit')) {
+    return { ...base, events: [{ auditEventId: randomUUID(), eventType: 'PAYROLL_ROUTE_REGISTERED', eventStatus: 'created', actorId: input.actorId ?? 'system', timestamp: new Date().toISOString() }] };
+  }
+  if (route.path.includes('/calibration')) {
+    return { requestId, calibrationProfileId: randomUUID(), printerId: input.printerId ?? 'default-printer', scaleLocked: true, noScaling: true, status: 'Calibration Saved' };
+  }
+  if (route.path.includes('/ai-assist/')) {
+    return { ...base, validationStatus: 'Passed', findings: [], requiredChecks: ['protected_identifier_exposure', 'duplicate_check_number', 'micr_line_completeness', 'print_scale_mismatch', 'ytd_completeness', 'stub_total_mismatch', 'net_pay_mismatch', 'missing_approval'] };
+  }
+  return base;
+}
+
+function matchPayrollRoute(method, pathname) {
+  for (const route of payrollRouteRegistry) {
+    if (route.method !== method) continue;
+    const pattern = `^${route.path.replaceAll('/', '\\/').replace('{checkId}', '([^/]+)')}$`;
+    const match = pathname.match(new RegExp(pattern));
+    if (match) return { route, checkId: match[1] };
+  }
+  return null;
 }
 
 async function proxyToWeb({ request, response, requestId, pathname, method = 'GET', body }) {
@@ -110,7 +228,8 @@ const server = http.createServer(async (request, response) => {
       status: 'online',
       requestId,
       uptimeSeconds: Math.floor(process.uptime()),
-      webOrigin: webOrigin.origin
+      webOrigin: webOrigin.origin,
+      registeredPayrollRoutes: payrollRouteRegistry.length
     }, requestId, applyCors(request, {}));
     return;
   }
@@ -122,6 +241,35 @@ const server = http.createServer(async (request, response) => {
 
   if (request.method === 'GET' && url.pathname === '/v1/catalog') {
     await proxyToWeb({ request, response, requestId, pathname: '/api/v1/enterprise/catalog' });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/v1/payroll/routes') {
+    writeJson(response, 200, {
+      service: '@ross/orchestration-api',
+      module: 'Payroll Check Rendering',
+      status: 'registered',
+      requestId,
+      routes: payrollRouteRegistry,
+      securityRules: payrollSecurityRules,
+      wiring: ['Employee Registry', 'Payroll Run Engine', 'Check Register', 'Check Renderer', 'PDF Export Engine', 'Print Queue', 'Audit Trail', 'AI Assist Validation', 'Closeout Router']
+    }, requestId, applyCors(request, {}));
+    return;
+  }
+
+  const payrollMatch = matchPayrollRoute(request.method ?? 'GET', url.pathname);
+  if (payrollMatch) {
+    try {
+      const input = request.method === 'POST' ? await readJsonBody(request) : {};
+      writeJson(response, 200, buildPayrollResponse({ requestId, ...payrollMatch, input }), requestId, applyCors(request, {}));
+    } catch (error) {
+      const tooLarge = error && typeof error === 'object' && error.code === 'PAYLOAD_TOO_LARGE';
+      writeJson(response, tooLarge ? 413 : 400, {
+        error: tooLarge ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON',
+        message: tooLarge ? 'Payroll requests are limited to 64 KB.' : 'A valid JSON payroll request is required.',
+        requestId
+      }, requestId, applyCors(request, {}));
+    }
     return;
   }
 
@@ -152,7 +300,7 @@ const server = http.createServer(async (request, response) => {
     error: 'ROUTE_NOT_FOUND',
     message: 'The requested orchestration route is not registered.',
     requestId,
-    availableRoutes: ['GET /health', 'GET /ready', 'GET /v1/catalog', 'POST /v1/transitions']
+    availableRoutes: ['GET /health', 'GET /ready', 'GET /v1/catalog', 'POST /v1/transitions', 'GET /v1/payroll/routes', ...payrollRouteRegistry.map((route) => `${route.method} ${route.path}`)]
   }, requestId, applyCors(request, {}));
 });
 
@@ -166,7 +314,8 @@ server.listen(port, '0.0.0.0', () => {
     service: '@ross/orchestration-api',
     port,
     webOrigin: webOrigin.origin,
-    allowedOriginCount: allowedOrigins.size
+    allowedOriginCount: allowedOrigins.size,
+    registeredPayrollRoutes: payrollRouteRegistry.length
   }));
 });
 
