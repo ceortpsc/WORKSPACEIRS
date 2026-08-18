@@ -33,7 +33,7 @@ jobs:
           fetch-depth: 0
 
       - name: Configure Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -126,7 +126,7 @@ jobs:
       - name: Checkout governed source
         uses: actions/checkout@v6
       - name: Configure Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Activate pnpm
