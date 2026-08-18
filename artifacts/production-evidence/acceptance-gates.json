@@ -1,0 +1,47 @@
+{
+  "application": "WORKSPACEIRS",
+  "organization": "Ross Tax Pro Software Co.",
+  "environment": "production",
+  "status": "BLOCKED",
+  "generatedBy": "directive-compliance-audit",
+  "truthBoundary": {
+    "externalAuthorizationNotImplied": true,
+    "directIrsMasterFileAccessClaimed": false,
+    "passRequiresEvidence": true
+  },
+  "gates": [
+    {"name":"source-repository","status":"PASS","evidence":"https://github.com/ceortpsc/WORKSPACEIRS"},
+    {"name":"multi-page-nextjs-build","status":"PASS WITH CONDITIONS","evidence":"GitHub Web CI must pass for the current head commit"},
+    {"name":"route-smoke-tests","status":"PASS WITH CONDITIONS","evidence":"scripts/smoke-test.mjs; current head run required"},
+    {"name":"authorization-boundary","status":"PASS WITH CONDITIONS","evidence":"apps/web/lib/api.ts and protected API denial tests"},
+    {"name":"tenant-isolation","status":"PASS WITH CONDITIONS","evidence":"request validation implemented; complete IDOR and database isolation tests missing"},
+    {"name":"registration-persistence","status":"BLOCKED","evidence":null},
+    {"name":"credential-encryption","status":"BLOCKED","evidence":null},
+    {"name":"immutable-audit-store","status":"BLOCKED","evidence":null},
+    {"name":"production-identity-provider","status":"BLOCKED","evidence":null},
+    {"name":"mfa-enforcement","status":"BLOCKED","evidence":null},
+    {"name":"database-migrations","status":"NOT EXECUTED","evidence":null},
+    {"name":"openapi-validation","status":"BLOCKED","evidence":null},
+    {"name":"asyncapi-validation","status":"BLOCKED","evidence":null},
+    {"name":"xml-xsd-validation","status":"BLOCKED","evidence":null},
+    {"name":"xhtml-validation","status":"BLOCKED","evidence":null},
+    {"name":"accessibility-wcag-2.2-aa","status":"NOT EXECUTED","evidence":null},
+    {"name":"security-scans","status":"NOT EXECUTED","evidence":null},
+    {"name":"performance-slo-tests","status":"NOT EXECUTED","evidence":null},
+    {"name":"aws-infrastructure-deployment","status":"BLOCKED","evidence":null},
+    {"name":"monitoring-and-alarms","status":"BLOCKED","evidence":null},
+    {"name":"backup-restore-test","status":"NOT EXECUTED","evidence":null},
+    {"name":"rollback-test","status":"NOT EXECUTED","evidence":null},
+    {"name":"irs-mef-external-gate","status":"BLOCKED","evidence":null},
+    {"name":"provider-integration-gates","status":"BLOCKED","evidence":null}
+  ],
+  "blockers": [
+    "Persistent encrypted PostgreSQL data layer not evidenced",
+    "KMS envelope encryption not implemented or evidenced",
+    "Production Cognito and MFA evidence absent",
+    "Complete OpenAPI, AsyncAPI, XML/XSD and XHTML validation evidence absent",
+    "AWS infrastructure inventory and deployment evidence absent",
+    "Backup, restore, rollback, accessibility, security and performance evidence absent",
+    "External IRS and provider authorization evidence absent"
+  ]
+}
